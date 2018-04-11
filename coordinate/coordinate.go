@@ -58,6 +58,10 @@ func (deg *Degree) ArcSeconds() float64 {
 	return deg.deg * 60. * 60.
 }
 
+func (deg *Degree) Radian() float64 {
+	return deg.deg * math.Pi / 180.
+}
+
 func (deg *Degree) String(format string) string {
 	switch format {
 	case `deg`, `degree`:
@@ -72,6 +76,8 @@ func (deg *Degree) String(format string) string {
 		return fmt.Sprintf("%.8fm", deg.Minutes())
 	case `sec`:
 		return fmt.Sprintf("%.8fs", deg.Seconds())
+	case `rad`, `radian`:
+		return fmt.Sprintf("%.8frad", deg.Radian())
 	case `dms`:
 		d, m, s := deg.DMS()
 		return fmt.Sprintf("%02.0fd%02.0f'%.8f\"", d, m, s)
