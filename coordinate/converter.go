@@ -197,3 +197,11 @@ func B1950ToJ2000(c *B1950) *J2000 {
 		Dec: &Degree{deg: dec * 180. / math.Pi},
 	}
 }
+
+func B1950ToGal(c *B1950) *Gal {
+	return J2000ToGal(B1950ToJ2000(c))
+}
+
+func GalToB1950(c *Gal) *B1950 {
+	return J2000ToB1950(GalToJ2000(c))
+}
