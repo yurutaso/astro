@@ -130,11 +130,11 @@ func (coord B1950) String() string {
 func (coord B1950) ConvertTo(newcoord string) Coordinate {
 	switch newcoord {
 	case `J2000`:
-		return coord
+		return B1950ToJ2000(&coord)
 	case `B1950`:
 		return coord
 	case `Gal`:
-		return coord
+		return B1950ToGal(&coord)
 	default:
 		return coord
 	}
@@ -149,9 +149,9 @@ func (coord J2000) ConvertTo(newcoord string) Coordinate {
 	case `J2000`:
 		return coord
 	case `B1950`:
-		return coord
+		return J2000ToB1950(&coord)
 	case `Gal`:
-		return coord
+		return J2000ToGal(&coord)
 	default:
 		return coord
 	}
@@ -164,9 +164,9 @@ func (coord Gal) String() string {
 func (coord Gal) ConvertTo(newcoord string) Coordinate {
 	switch newcoord {
 	case `J2000`:
-		return coord
+		return GalToJ2000(&coord)
 	case `B1950`:
-		return coord
+		return GalToB1950(&coord)
 	case `Gal`:
 		return coord
 	default:
