@@ -37,6 +37,10 @@ func NewAngleFromHMS(hour, min, sec float64) *Angle {
 	return ang
 }
 
+func (ang *Angle) Add(ang2 *Angle) {
+	ang.deg += ang2.deg
+}
+
 func (ang *Angle) DMS() (float64, float64, float64) {
 	sign := 1.
 	if ang.deg < 0 {
@@ -117,6 +121,15 @@ func (ang *Angle) String(format string) string {
 type Spherical struct {
 	X *Angle
 	Y *Angle
+}
+
+func (s *Spherical) Offset(xoff, yoff *Angle) *Spherical {
+	x := *s.X
+	y := *s.Y
+	y.Add(yoff)
+	xoff.deg /= math.Abs(math.Cos(y.Radian()))
+	x.Add(xoff)
+	return &Spherical{X: &x, Y: &y}
 }
 
 func (s *Spherical) ToEq() *Spherical {
@@ -203,6 +216,7 @@ func (c *Cartesian) ToSpherical() *Spherical {
 type Coordinate interface {
 	ConvertTo(string) Coordinate
 	ToCartesian() *Cartesian
+	Offset(*Angle, *Angle) Coordinate
 	GetX() *Angle
 	GetY() *Angle
 }
@@ -210,6 +224,11 @@ type Coordinate interface {
 type coordinate struct {
 	*Spherical
 	system string
+}
+
+func (c coordinate) Offset(xoff, yoff *Angle) Coordinate {
+	s := c.Spherical.Offset(xoff, yoff)
+	return NewCoordinateFromSphere(c.system, s)
 }
 
 func (c coordinate) GetX() *Angle {
@@ -275,6 +294,11 @@ func (c coordinate) ConvertTo(newsystem string) Coordinate {
 
 func NewCoordinate(system string, x, y float64) Coordinate {
 	s := &Spherical{X: NewAngle(x), Y: NewAngle(y)}
+	return NewCoordinateFromSphere(system, s)
+}
+
+func NewCoordinateFromAngles(system string, x, y *Angle) Coordinate {
+	s := &Spherical{X: x, Y: y}
 	return NewCoordinateFromSphere(system, s)
 }
 
