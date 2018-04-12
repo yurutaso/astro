@@ -6,170 +6,321 @@ import (
 	"math"
 )
 
-type Degree struct {
+/* Convinient functions */
+func DegToRad(deg float64) float64 {
+	return deg * math.Pi / 180.
+}
+
+func RadToDeg(rad float64) float64 {
+	return rad * 180. / math.Pi
+}
+
+/* Struct Angle */
+type Angle struct {
 	deg float64
 }
 
-func NewDegree(deg float64) *Degree {
-	return &Degree{deg: deg}
+func NewAngle(deg float64) *Angle {
+	return &Angle{deg: deg}
 }
 
-func (deg *Degree) DMS() (float64, float64, float64) {
+func NewAngleFromDMS(deg, min, sec float64) *Angle {
+	if deg < 0 {
+		return &Angle{deg: -(-deg + min/60. + sec/3600.)}
+	}
+	return &Angle{deg: deg + min/60. + sec/3600.}
+}
+
+func NewAngleFromHMS(hour, min, sec float64) *Angle {
+	ang := NewAngleFromDMS(hour, min, sec)
+	ang.deg *= 15.
+	return ang
+}
+
+func (ang *Angle) DMS() (float64, float64, float64) {
 	sign := 1.
-	if deg.deg < 0 {
+	if ang.deg < 0 {
 		sign = -1
 	}
-	d := math.Abs(deg.deg)
-	hour := math.Floor(d)
-	d = (d - hour) * 60.
-	min := math.Floor(d)
-	sec := (d - min) * 60.
-	return sign * hour, min, sec
+	s := math.Abs(ang.ArcSeconds())
+	sec := math.Mod(s, 60.)
+	m := (s - sec) / 60.
+	min := math.Mod(m, 60.)
+	deg := (m - min) / 60.
+	return sign * deg, min, sec
 }
 
-func (deg *Degree) HMS() (float64, float64, float64) {
-	deg.deg /= 15.
-	h, m, s := deg.DMS()
-	deg.deg *= 15.
+func (ang *Angle) HMS() (float64, float64, float64) {
+	ang.deg /= 15.
+	h, m, s := ang.DMS()
+	ang.deg *= 15.
 	return h, m, s
 }
 
-func (deg *Degree) Hour() float64 {
-	return deg.deg / 15.
+func (ang *Angle) Hour() float64 {
+	return ang.deg / 15.
 }
 
-func (deg *Degree) Minutes() float64 {
-	return deg.deg / 15. * 60.
+func (ang *Angle) Minutes() float64 {
+	return ang.deg / 15. * 60.
 }
 
-func (deg *Degree) Seconds() float64 {
-	return deg.deg / 15. * 60. * 60.
+func (ang *Angle) Seconds() float64 {
+	return ang.deg / 15. * 60. * 60.
 }
 
-func (deg *Degree) Degree() float64 {
-	return deg.deg
+func (ang *Angle) Degree() float64 {
+	return ang.deg
 }
 
-func (deg *Degree) ArcMinutes() float64 {
-	return deg.deg * 60.
+func (ang *Angle) ArcMinutes() float64 {
+	return ang.deg * 60.
 }
 
-func (deg *Degree) ArcSeconds() float64 {
-	return deg.deg * 60. * 60.
+func (ang *Angle) ArcSeconds() float64 {
+	return ang.deg * 60. * 60.
 }
 
-func (deg *Degree) Radian() float64 {
-	return deg.deg * math.Pi / 180.
+func (ang *Angle) Radian() float64 {
+	return ang.deg * math.Pi / 180.
 }
 
-func (deg *Degree) String(format string) string {
+func (ang *Angle) String(format string) string {
 	switch format {
 	case `deg`, `degree`:
-		return fmt.Sprintf("%.8fd", deg.Degree())
+		return fmt.Sprintf("%.8fd", ang.Degree())
 	case `arcmin`:
-		return fmt.Sprintf("%.8f'", deg.ArcMinutes())
+		return fmt.Sprintf("%.8f'", ang.ArcMinutes())
 	case `arcsec`:
-		return fmt.Sprintf("%.8f\"", deg.ArcSeconds())
+		return fmt.Sprintf("%.8f\"", ang.ArcSeconds())
 	case `hour`:
-		return fmt.Sprintf("%.8fh", deg.Hour())
+		return fmt.Sprintf("%.8fh", ang.Hour())
 	case `min`:
-		return fmt.Sprintf("%.8fm", deg.Minutes())
+		return fmt.Sprintf("%.8fm", ang.Minutes())
 	case `sec`:
-		return fmt.Sprintf("%.8fs", deg.Seconds())
+		return fmt.Sprintf("%.8fs", ang.Seconds())
 	case `rad`, `radian`:
-		return fmt.Sprintf("%.8frad", deg.Radian())
+		return fmt.Sprintf("%.8frad", ang.Radian())
 	case `dms`:
-		d, m, s := deg.DMS()
+		d, m, s := ang.DMS()
 		return fmt.Sprintf("%02.0fd%02.0f'%.8f\"", d, m, s)
 	case `hms`:
-		h, m, s := deg.HMS()
+		h, m, s := ang.HMS()
 		return fmt.Sprintf("%02.0fh%02.0fm%.8fs", h, m, s)
 	default:
 		log.Printf("Unknown format %s. Return degree.")
-		return fmt.Sprintf("%.8fd", deg.Degree())
+		return fmt.Sprintf("%.8fd", ang.Degree())
 	}
 }
 
-func DMSToDeg(deg, min, sec float64) *Degree {
-	if deg < 0 {
-		return &Degree{deg: -(-deg + min/60. + sec/3600.)}
-	}
-	return &Degree{deg: deg + min/60. + sec/3600.}
+/* Coordinates */
+type Spherical struct {
+	X *Angle
+	Y *Angle
 }
 
-func HMSToDeg(hour, min, sec float64) *Degree {
-	deg := DMSToDeg(hour, min, sec)
-	deg.deg *= 15.
-	return deg
+func (s *Spherical) ToEq() Coordinate {
+	x := s.X.Radian()
+	y := s.Y.Radian()
+
+	ra := math.Mod(x, 2.*math.Pi)
+	if ra < 0 {
+		ra += 2. * math.Pi
+	}
+
+	dec := math.Mod(y, 2.*math.Pi)
+	if math.Abs(dec) > math.Pi {
+		if y > 0 {
+			dec -= math.Pi
+		}
+		if y < 0 {
+			dec += math.Pi
+		}
+	}
+	return NewCoordinate(`J2000`, RadToDeg(ra), RadToDeg(dec))
+}
+
+func (s *Spherical) ToGal() Coordinate {
+	x := s.X.Radian()
+	y := s.Y.Radian()
+
+	l := math.Mod(x, 2.*math.Pi)
+	if l < 0 {
+		l += 2. * math.Pi
+	}
+	b := math.Mod(y, 2.*math.Pi)
+	if math.Abs(b) > math.Pi {
+		if y > 0 {
+			b -= math.Pi
+		}
+		if y < 0 {
+			b += math.Pi
+		}
+	}
+	return NewCoordinate(`Gal`, RadToDeg(l), RadToDeg(b))
+}
+
+type Cartesian struct {
+	X float64
+	Y float64
+	Z float64
+}
+
+func (s *Spherical) ToCartesian() *Cartesian {
+	x := s.X.Radian()
+	y := s.Y.Radian()
+	return &Cartesian{
+		X: math.Cos(x) * math.Cos(y),
+		Y: math.Sin(x) * math.Cos(y),
+		Z: math.Sin(y),
+	}
+}
+
+func (c *Cartesian) ToSpherical() *Spherical {
+	x := c.X
+	y := c.Y
+	z := c.Z
+	r := math.Sqrt(x*x + y*y)
+	var h float64
+	var v float64
+	if r == 0 {
+		h = 0.0
+	} else {
+		h = math.Atan2(y, x)
+	}
+
+	if z == 0 {
+		v = 0.0
+	} else {
+		v = math.Atan2(z, r)
+	}
+	return &Spherical{
+		X: NewAngle(RadToDeg(h)),
+		Y: NewAngle(RadToDeg(v)),
+	}
 }
 
 type Coordinate interface {
-	String() string
 	ConvertTo(string) Coordinate
+	ToCartesian() *Cartesian
+	GetX() *Angle
+	GetY() *Angle
+}
+
+type coordinate struct {
+	*Spherical
+	system string
+}
+
+func (c coordinate) GetX() *Angle {
+	return c.X
+}
+
+func (c coordinate) GetY() *Angle {
+	return c.Y
 }
 
 type B1950 struct {
-	Ra  *Degree
-	Dec *Degree
+	*coordinate
 }
 
 type J2000 struct {
-	Ra  *Degree
-	Dec *Degree
+	*coordinate
 }
 
 type Gal struct {
-	Lon *Degree
-	Lat *Degree
+	*coordinate
 }
 
-func (coord B1950) String() string {
-	return fmt.Sprintf(`RA: %s, DEC: %s`, coord.Ra.String(`hms`), coord.Dec.String(`dms`))
-}
-
-func (coord B1950) ConvertTo(newcoord string) Coordinate {
-	switch newcoord {
+func (c coordinate) ConvertTo(newsystem string) Coordinate {
+	switch c.system {
 	case `J2000`:
-		return B1950ToJ2000(&coord)
+		switch newsystem {
+		case `J2000`:
+			return c
+		case `B1950`:
+			return J2000ToB1950(&c)
+		case `Gal`:
+			return J2000ToGal(&c)
+		default:
+			log.Fatal(fmt.Errorf("Unknown newsystem %s", newsystem))
+		}
 	case `B1950`:
-		return coord
+		switch newsystem {
+		case `J2000`:
+			return B1950ToJ2000(&c)
+		case `B1950`:
+			return c
+		case `Gal`:
+			return B1950ToGal(&c)
+		default:
+			log.Fatal(fmt.Errorf("Unknown newsystem %s", newsystem))
+		}
 	case `Gal`:
-		return B1950ToGal(&coord)
+		switch newsystem {
+		case `J2000`:
+			return GalToJ2000(&c)
+		case `B1950`:
+			return GalToB1950(&c)
+		case `Gal`:
+			return c
+		default:
+			log.Fatal(fmt.Errorf("Unknown newsystem %s", newsystem))
+		}
 	default:
-		return coord
+		log.Fatal(fmt.Errorf("Unknown input system %s", c.system))
 	}
+	return nil
 }
 
-func (coord J2000) String() string {
-	return fmt.Sprintf(`RA: %s, DEC: %s`, coord.Ra.String(`hms`), coord.Dec.String(`dms`))
-}
-
-func (coord J2000) ConvertTo(newcoord string) Coordinate {
-	switch newcoord {
+func NewCoordinate(system string, x, y float64) Coordinate {
+	s := Spherical{X: NewAngle(x), Y: NewAngle(y)}
+	c := coordinate{Spherical: &s, system: system}
+	switch system {
 	case `J2000`:
-		return coord
+		return &J2000{&c}
 	case `B1950`:
-		return J2000ToB1950(&coord)
+		return &B1950{&c}
 	case `Gal`:
-		return J2000ToGal(&coord)
+		return &Gal{&c}
 	default:
-		return coord
+		log.Fatal(fmt.Errorf("Unknwon system %s", system))
 	}
+	return nil
 }
 
-func (coord Gal) String() string {
-	return fmt.Sprintf(`l: %s, b: %s`, coord.Lon.String(`deg`), coord.Lat.String(`deg`))
+func (coord *B1950) String() string {
+	return fmt.Sprintf(`RA: %s, DEC: %s`, coord.X.String(`hms`), coord.Y.String(`dms`))
 }
 
-func (coord Gal) ConvertTo(newcoord string) Coordinate {
-	switch newcoord {
-	case `J2000`:
-		return GalToJ2000(&coord)
-	case `B1950`:
-		return GalToB1950(&coord)
-	case `Gal`:
-		return coord
-	default:
-		return coord
-	}
+func (coord *B1950) Ra() *Angle {
+	return coord.X
+}
+
+func (coord *B1950) Dec() *Angle {
+	return coord.Y
+}
+
+func (coord *J2000) String() string {
+	return fmt.Sprintf(`RA: %s, DEC: %s`, coord.X.String(`hms`), coord.Y.String(`dms`))
+}
+
+func (coord *J2000) Ra() *Angle {
+	return coord.X
+}
+
+func (coord *J2000) Dec() *Angle {
+	return coord.Y
+}
+
+func (coord *Gal) String() string {
+	return fmt.Sprintf(`l: %s, b: %s`, coord.X.String(`deg`), coord.Y.String(`deg`))
+}
+
+func (coord *Gal) Longitude() *Angle {
+	return coord.X
+}
+
+func (coord *Gal) Latitude() *Angle {
+	return coord.Y
 }

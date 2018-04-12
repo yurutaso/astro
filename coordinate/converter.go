@@ -8,104 +8,37 @@ const (
 	BEPOCH_WEIGHT float64 = (15019.81352 + (1950.-1900.)*365.242198781 - 51544.5) / 365.25 / (100. * 60. * 60. * 360. / 2.)
 )
 
-func DCS2C(h, v float64) []float64 {
-	return []float64{
-		math.Cos(h) * math.Cos(v),
-		math.Sin(h) * math.Cos(v),
-		math.Sin(v),
-	}
-}
-
-func DCC2S(V []float64) (float64, float64) {
-	x := V[0]
-	y := V[1]
-	z := V[2]
-	r := math.Sqrt(x*x + y*y)
-	var h float64
-	var v float64
-	if r == 0 {
-		h = 0.0
-	} else {
-		h = math.Atan2(y, x)
-	}
-
-	if z == 0 {
-		v = 0.0
-	} else {
-		v = math.Atan2(z, r)
-	}
-	return h, v
-}
-
-func J2000ToGal(c *J2000) *Gal {
+func J2000ToGal(c Coordinate) Coordinate {
 	RMAT := [][]float64{
 		{-0.054875539726, -0.873437108010, -0.483834985808},
 		{+0.494109453312, -0.444829589425, +0.746982251810},
 		{-0.867666135858, -0.198076386122, +0.455983795705},
 	}
-	v1 := DCS2C(c.Ra.Radian(), c.Dec.Radian())
-	v2 := []float64{0, 0, 0}
-	for i := 0; i < 3; i++ {
-		for j := 0; j < 3; j++ {
-			v2[i] += RMAT[i][j] * v1[j]
-		}
+	c1 := c.ToCartesian()
+	c2 := &Cartesian{
+		X: RMAT[0][0]*c1.X + RMAT[0][1]*c1.Y + RMAT[0][2]*c1.Z,
+		Y: RMAT[1][0]*c1.X + RMAT[1][1]*c1.Y + RMAT[1][2]*c1.Z,
+		Z: RMAT[2][0]*c1.X + RMAT[2][1]*c1.Y + RMAT[2][2]*c1.Z,
 	}
-	h, v := DCC2S(v2)
-	l := math.Mod(h, 2.*math.Pi)
-	if l < 0 {
-		l += 2. * math.Pi
-	}
-	b := math.Mod(v, 2.*math.Pi)
-	if math.Abs(b) > math.Pi {
-		if v > 0 {
-			b -= math.Pi
-		}
-		if v < 0 {
-			b += math.Pi
-		}
-	}
-	return &Gal{
-		Lon: &Degree{deg: l * 180. / math.Pi},
-		Lat: &Degree{deg: b * 180. / math.Pi},
-	}
+	return c2.ToSpherical().ToGal()
 }
 
-func GalToJ2000(c *Gal) *J2000 {
+func GalToJ2000(c Coordinate) Coordinate {
 	RMAT := [][]float64{
 		{-0.054875539726, -0.873437108010, -0.483834985808},
 		{+0.494109453312, -0.444829589425, +0.746982251810},
 		{-0.867666135858, -0.198076386122, +0.455983795705},
 	}
-	v1 := DCS2C(c.Lon.Radian(), c.Lat.Radian())
-	v2 := []float64{0, 0, 0}
-	for i := 0; i < 3; i++ {
-		for j := 0; j < 3; j++ {
-			v2[i] += RMAT[j][i] * v1[j]
-		}
+	c1 := c.ToCartesian()
+	c2 := &Cartesian{
+		X: RMAT[0][0]*c1.X + RMAT[1][0]*c1.Y + RMAT[2][0]*c1.Z,
+		Y: RMAT[0][1]*c1.X + RMAT[1][1]*c1.Y + RMAT[2][1]*c1.Z,
+		Z: RMAT[0][2]*c1.X + RMAT[1][2]*c1.Y + RMAT[2][2]*c1.Z,
 	}
-	h, v := DCC2S(v2)
-
-	ra := math.Mod(h, 2.*math.Pi)
-	if ra < 0 {
-		ra += 2. * math.Pi
-	}
-
-	dec := math.Mod(v, 2.*math.Pi)
-	if math.Abs(dec) > math.Pi {
-		if v > 0 {
-			dec -= math.Pi
-		}
-		if v < 0 {
-			dec += math.Pi
-		}
-	}
-	return &J2000{
-		Ra:  &Degree{deg: ra * 180. / math.Pi},
-		Dec: &Degree{deg: dec * 180. / math.Pi},
-	}
+	return c2.ToSpherical().ToEq()
 }
 
-func J2000ToB1950(c *J2000) *B1950 {
+func J2000ToB1950(c Coordinate) Coordinate {
 	A := []float64{-1.62557e-6, -0.31919e-6, -0.13843e-6, 1.245e-3, -1.580e-3, -0.659e-3}
 	EMI := [][]float64{
 		{+0.9999256795, -0.0111814828, -0.0048590040, -0.000551, -0.238560, +0.435730},
@@ -113,12 +46,10 @@ func J2000ToB1950(c *J2000) *B1950 {
 		{+0.0048590039, -0.0000271771, +0.9999881946, -0.435614, +0.012254, +0.002117},
 	}
 
-	ra := c.Ra.Radian()
-	dec := c.Dec.Radian()
-
-	x := math.Cos(ra) * math.Cos(dec)
-	y := math.Sin(ra) * math.Cos(dec)
-	z := math.Sin(dec)
+	c1 := c.ToCartesian()
+	x := c1.X
+	y := c1.Y
+	z := c1.Z
 
 	v1 := []float64{x, y, z}
 	v2 := []float64{0, 0, 0, 0, 0, 0}
@@ -145,6 +76,7 @@ func J2000ToB1950(c *J2000) *B1950 {
 
 	rxy := math.Sqrt(x*x + y*y)
 
+	var ra, dec float64
 	if x == 0 && y == 0 {
 		ra = 0.
 	} else {
@@ -155,13 +87,10 @@ func J2000ToB1950(c *J2000) *B1950 {
 	}
 	dec = math.Atan2(z, rxy)
 
-	return &B1950{
-		Ra:  &Degree{deg: ra * 180. / math.Pi},
-		Dec: &Degree{deg: dec * 180. / math.Pi},
-	}
+	return NewCoordinate(`B1950`, RadToDeg(ra), RadToDeg(dec))
 }
 
-func B1950ToJ2000(c *B1950) *J2000 {
+func B1950ToJ2000(c Coordinate) Coordinate {
 	A := []float64{-1.62557e-6, -0.31919e-6, -0.13843e-6}
 	EM := [][]float64{
 		{+0.9999256782, +0.0111820610, +0.0048579479, -0.000551, +0.238514, -0.435623},
@@ -169,7 +98,8 @@ func B1950ToJ2000(c *B1950) *J2000 {
 		{-0.0048579477, -0.0000271765, +0.9999881997, +0.435739, -0.008541, +0.002117},
 	}
 
-	r0 := DCS2C(c.Ra.Radian(), c.Dec.Radian())
+	c1 := c.ToCartesian()
+	r0 := []float64{c1.X, c1.Y, c1.Z}
 	w := r0[0]*A[0] + r0[1]*A[1] + r0[2]*A[2]
 
 	for i := 0; i < 3; i++ {
@@ -185,23 +115,14 @@ func B1950ToJ2000(c *B1950) *J2000 {
 		v2[i] += math.Pi * BEPOCH_WEIGHT * v2[i+3]
 	}
 
-	h, v := DCC2S(v2)
-	ra := math.Mod(h, 2.*math.Pi)
-	if ra < 0 {
-		ra += 2. * math.Pi
-	}
-	dec := v
-
-	return &J2000{
-		Ra:  &Degree{deg: ra * 180. / math.Pi},
-		Dec: &Degree{deg: dec * 180. / math.Pi},
-	}
+	c2 := &Cartesian{X: v2[0], Y: v2[1], Z: v2[2]}
+	return c2.ToSpherical().ToEq()
 }
 
-func B1950ToGal(c *B1950) *Gal {
+func B1950ToGal(c Coordinate) Coordinate {
 	return J2000ToGal(B1950ToJ2000(c))
 }
 
-func GalToB1950(c *Gal) *B1950 {
+func GalToB1950(c Coordinate) Coordinate {
 	return J2000ToB1950(GalToJ2000(c))
 }

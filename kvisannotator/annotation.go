@@ -79,9 +79,9 @@ func NewLine(from, to coordinate.Coordinate) *Line {
 }
 
 func (ann Line) String() string {
-	from := ann.From.ConvertTo(`J2000`).(coordinate.J2000)
-	to := ann.To.ConvertTo(`J2000`).(coordinate.J2000)
-	return fmt.Sprintf("%sLINE W %f %f W %f %f\n", ann.Option, from.Ra.Degree(), from.Dec.Degree(), to.Ra.Degree(), to.Dec.Degree())
+	from := ann.From.ConvertTo(`J2000`)
+	to := ann.To.ConvertTo(`J2000`)
+	return fmt.Sprintf("%sLINE W %f %f W %f %f\n", ann.Option, from.GetX().Degree(), from.GetY().Degree(), to.GetX().Degree(), to.GetY().Degree())
 }
 
 /* Annotation Circle */
@@ -96,8 +96,8 @@ func NewCircle(center coordinate.Coordinate, width float64) *Circle {
 }
 
 func (ann Circle) String() string {
-	center := ann.Center.ConvertTo(`J2000`).(coordinate.J2000)
-	return fmt.Sprintf("%sCIRCLE W %f %f %f\n", ann.Option, center.Ra.Degree(), center.Dec.Degree(), ann.Width)
+	center := ann.Center.ConvertTo(`J2000`)
+	return fmt.Sprintf("%sCIRCLE W %f %f %f\n", ann.Option, center.GetX().Degree(), center.GetY().Degree(), ann.Width)
 }
 
 /* Annotation Point */
@@ -111,6 +111,6 @@ func NewDot(center coordinate.Coordinate) *Dot {
 }
 
 func (ann Dot) String() string {
-	center := ann.Center.ConvertTo(`J2000`).(coordinate.J2000)
-	return fmt.Sprintf("%sDot W %f %f\n", ann.Option, center.Ra.Degree(), center.Dec.Degree())
+	center := ann.Center.ConvertTo(`J2000`).(*coordinate.J2000)
+	return fmt.Sprintf("%sDot W %f %f\n", ann.Option, center.GetX().Degree(), center.GetY().Degree())
 }
