@@ -119,7 +119,7 @@ type Spherical struct {
 	Y *Angle
 }
 
-func (s *Spherical) ToEq() Coordinate {
+func (s *Spherical) ToEq() *Spherical {
 	x := s.X.Radian()
 	y := s.Y.Radian()
 
@@ -137,10 +137,10 @@ func (s *Spherical) ToEq() Coordinate {
 			dec += math.Pi
 		}
 	}
-	return NewCoordinate(`J2000`, RadToDeg(ra), RadToDeg(dec))
+	return &Spherical{X: NewAngle(RadToDeg(ra)), Y: NewAngle(RadToDeg(dec))}
 }
 
-func (s *Spherical) ToGal() Coordinate {
+func (s *Spherical) ToGal() *Spherical {
 	x := s.X.Radian()
 	y := s.Y.Radian()
 
@@ -157,7 +157,7 @@ func (s *Spherical) ToGal() Coordinate {
 			b += math.Pi
 		}
 	}
-	return NewCoordinate(`Gal`, RadToDeg(l), RadToDeg(b))
+	return &Spherical{X: NewAngle(RadToDeg(l)), Y: NewAngle(RadToDeg(b))}
 }
 
 type Cartesian struct {
@@ -274,8 +274,12 @@ func (c coordinate) ConvertTo(newsystem string) Coordinate {
 }
 
 func NewCoordinate(system string, x, y float64) Coordinate {
-	s := Spherical{X: NewAngle(x), Y: NewAngle(y)}
-	c := coordinate{Spherical: &s, system: system}
+	s := &Spherical{X: NewAngle(x), Y: NewAngle(y)}
+	return NewCoordinateFromSphere(system, s)
+}
+
+func NewCoordinateFromSphere(system string, s *Spherical) Coordinate {
+	c := coordinate{Spherical: s, system: system}
 	switch system {
 	case `J2000`:
 		return &J2000{&c}
@@ -290,7 +294,7 @@ func NewCoordinate(system string, x, y float64) Coordinate {
 }
 
 func (coord *B1950) String() string {
-	return fmt.Sprintf(`RA: %s, DEC: %s`, coord.X.String(`hms`), coord.Y.String(`dms`))
+	return fmt.Sprintf(`B1950, RA: %s, DEC: %s`, coord.X.String(`hms`), coord.Y.String(`dms`))
 }
 
 func (coord *B1950) Ra() *Angle {
@@ -302,7 +306,7 @@ func (coord *B1950) Dec() *Angle {
 }
 
 func (coord *J2000) String() string {
-	return fmt.Sprintf(`RA: %s, DEC: %s`, coord.X.String(`hms`), coord.Y.String(`dms`))
+	return fmt.Sprintf(`J2000, RA: %s, DEC: %s`, coord.X.String(`hms`), coord.Y.String(`dms`))
 }
 
 func (coord *J2000) Ra() *Angle {
@@ -314,7 +318,7 @@ func (coord *J2000) Dec() *Angle {
 }
 
 func (coord *Gal) String() string {
-	return fmt.Sprintf(`l: %s, b: %s`, coord.X.String(`deg`), coord.Y.String(`deg`))
+	return fmt.Sprintf(`Galac, Lat: %s, Lon: %s`, coord.X.String(`deg`), coord.Y.String(`deg`))
 }
 
 func (coord *Gal) Longitude() *Angle {

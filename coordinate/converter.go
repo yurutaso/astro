@@ -20,7 +20,8 @@ func J2000ToGal(c Coordinate) Coordinate {
 		Y: RMAT[1][0]*c1.X + RMAT[1][1]*c1.Y + RMAT[1][2]*c1.Z,
 		Z: RMAT[2][0]*c1.X + RMAT[2][1]*c1.Y + RMAT[2][2]*c1.Z,
 	}
-	return c2.ToSpherical().ToGal()
+	s := c2.ToSpherical().ToGal()
+	return NewCoordinateFromSphere(`Gal`, s)
 }
 
 func GalToJ2000(c Coordinate) Coordinate {
@@ -35,7 +36,8 @@ func GalToJ2000(c Coordinate) Coordinate {
 		Y: RMAT[0][1]*c1.X + RMAT[1][1]*c1.Y + RMAT[2][1]*c1.Z,
 		Z: RMAT[0][2]*c1.X + RMAT[1][2]*c1.Y + RMAT[2][2]*c1.Z,
 	}
-	return c2.ToSpherical().ToEq()
+	s := c2.ToSpherical().ToEq()
+	return NewCoordinateFromSphere(`J2000`, s)
 }
 
 func J2000ToB1950(c Coordinate) Coordinate {
@@ -116,7 +118,8 @@ func B1950ToJ2000(c Coordinate) Coordinate {
 	}
 
 	c2 := &Cartesian{X: v2[0], Y: v2[1], Z: v2[2]}
-	return c2.ToSpherical().ToEq()
+	s := c2.ToSpherical().ToEq()
+	return NewCoordinateFromSphere(`J2000`, s)
 }
 
 func B1950ToGal(c Coordinate) Coordinate {
