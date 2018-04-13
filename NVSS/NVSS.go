@@ -11,7 +11,7 @@ import (
 )
 
 type Source struct {
-	Coord coordinate.J2000
+	Coord coordinate.Coordinate
 	Flux  float64
 }
 
@@ -85,10 +85,10 @@ func NewCatalogFromText(filename string) (*Catalog, error) {
 			if flux, err = strconv.ParseFloat(data[7], 64); err != nil {
 				return nil, err
 			}
-			ra := &coordinate.HMSToDeg(ra_h, ra_m, ra_s)
-			dec := &coordinate.DMSToDeg(dec_d, dec_m, dec_s)
+			ra := coordinate.NewAngleFromHMS(ra_h, ra_m, ra_s)
+			dec := coordinate.NewAngleFromDMS(dec_d, dec_m, dec_s)
 			source := Source{
-				Coord: &coordinate.J2000{Ra: ra, Dec: dec},
+				Coord: coordinate.NewCoordinateFromAngles(`J2000`, ra, dec),
 				Flux:  flux,
 			}
 			sources = append(sources, source)
@@ -101,8 +101,8 @@ func NewCatalogFromText(filename string) (*Catalog, error) {
 func (cat *Catalog) Filter(filter *Filter) *Catalog {
 	sources := make([]Source, 0, 0)
 	for _, source := range cat.Sources {
-		ra := source.Coord.Ra
-		dec := source.Coord.Dec
+		ra := source.Coord.GetX().Degree()
+		dec := source.Coord.GetY().Degree()
 		flux := source.Flux
 		if filter.RaMin <= ra && ra <= filter.RaMax {
 			if filter.DecMin <= dec && dec <= filter.DecMax {
