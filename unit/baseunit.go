@@ -12,6 +12,7 @@ type BaseUnit interface {
 	Type() string    // e.g. length, time, mass etc.
 	Name() string    // e.g. meter, second, gram
 	Prefix() float64 // e.g Kilo, Giga
+	AsUnits(float64) Units
 }
 
 /* Base unit of a specified type */
@@ -21,6 +22,9 @@ type baseUnit struct {
 	prefix float64
 }
 
+func (u *baseUnit) AsUnits(dim float64) Units {
+	return NewSingleUnit(u, dim)
+}
 func (u *baseUnit) Type() string {
 	return u.utype
 }

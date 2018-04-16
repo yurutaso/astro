@@ -5,97 +5,118 @@ import (
 	"math"
 )
 
-/* unit with dimension */
+/* Interface Unit is defined as BaseUnit with dimension */
+/* In the usual case, use "Units" rather than "Unit" */
 type Unit interface {
 	BaseUnit
+	String() string
+	Copy() Unit
+	GetBaseUnit() BaseUnit
 	Dimension() float64
-	setDimension(float64)
-	addDimension(float64)
+	SetDimension(float64)
+	AddDimension(float64)
+	Inverse() Unit
+	Equal(Unit) bool
+	RatioTo(Unit) (float64, error)
 }
 
-type unit struct {
+type _unit struct {
 	BaseUnit
 	dim float64
 }
 
-func NewUnit(u BaseUnit, dim float64) Unit {
-	return &unit{BaseUnit: u, dim: dim}
+func (u *_unit) String() string {
+	switch u.dim {
+	case 0:
+		return ""
+	case 1:
+		return u.Name()
+	default:
+		return fmt.Sprintf("%s^%.0f", u.Name(), u.dim)
+	}
 }
-
-func (u *unit) Dimension() float64 {
+func (u *_unit) Dimension() float64 {
 	return u.dim
 }
-func (u *unit) setDimension(dim float64) {
+func (u *_unit) SetDimension(dim float64) {
 	u.dim = dim
 }
-func (u *unit) addDimension(dim float64) {
+func (u *_unit) AddDimension(dim float64) {
 	u.dim += dim
 }
+func (u *_unit) Inverse() Unit {
+	return &_unit{BaseUnit: u.BaseUnit, dim: -u.dim}
+}
+func (u *_unit) Equal(that Unit) bool {
+	return u.Type() == that.Type() && u.dim == that.Dimension()
+}
+func (u *_unit) RatioTo(that Unit) (float64, error) {
+	if that.Equal(u) {
+		return math.Pow(u.Prefix()/that.Prefix(), u.dim), nil
+	}
+	return 1., fmt.Errorf(`Cannot compute ratio of units with different dimensions`)
+}
 
-/* Composit unit */
+func (u *_unit) GetBaseUnit() BaseUnit {
+	return u.BaseUnit
+}
+
+func (u *_unit) Copy() Unit {
+	return &_unit{BaseUnit: u.BaseUnit, dim: u.dim}
+}
+
+/* Composit Unit */
 type Units interface {
+	Inverse() Units
 	Get(string) Unit
-	Set(Unit)
 	GetAll() map[string]Unit
+	Set(Unit)
 	Copy() Units
 	Equal(Units) bool
 	Has(string) bool
-	Multiply(Units) (Units, float64)
+	Multiply(...Units) (Units, float64)
+	Times(float64) Units
 }
 
-type units struct {
+type _units struct {
 	units map[string]Unit
 }
 
-func UnitsFromSlice(u ...Unit) Units {
-	newunits := map[string]Unit{}
-	for _, unit := range u {
-		newunits[unit.Type()] = unit
+func (units *_units) Times(val float64) Units {
+	timed := units.Copy()
+	for _, unit := range timed.GetAll() {
+		unit.SetDimension(val * unit.Dimension())
 	}
-	return &units{units: newunits}
+	return timed
 }
 
-func (u *units) Set(unit Unit) {
-	u.units[unit.Type()] = unit
+func (units *_units) Inverse() Units {
+	inversed := units.Copy()
+	for _, unit := range inversed.GetAll() {
+		unit.SetDimension(-unit.Dimension())
+	}
+	return inversed
 }
-func (u *units) GetAll() map[string]Unit {
-	return u.units
+
+func (units *_units) Set(unit Unit) {
+	units.units[unit.Type()] = unit.Copy()
 }
-func (u *units) Get(utype string) Unit {
-	if u.Has(utype) {
-		return u.units[utype]
+
+func (units *_units) GetAll() map[string]Unit {
+	return units.units
+}
+
+func (units *_units) Get(utype string) Unit {
+	for t, unit := range units.units {
+		if t == utype {
+			return unit
+		}
 	}
 	return nil
 }
 
-func (u *units) Copy() Units {
-	copied := map[string]Unit{}
-	for utype, unit := range u.units {
-		b := BaseUnitOf(utype, unit.Name(), unit.Prefix())
-		copied[utype] = NewUnit(b, unit.Dimension())
-	}
-	return &units{units: copied}
-}
-
-func (u *units) Equal(that Units) bool {
-	if len(u.units) != len(that.GetAll()) {
-		return false
-	}
-	for utype, unit1 := range u.units {
-		if that.Has(utype) {
-			if unit1.Dimension() != that.Get(utype).Dimension() {
-				return false
-			}
-		} else {
-			return false
-		}
-	}
-	return true
-}
-
-func (u *units) Has(utype string) bool {
-	// True if Units has type utype
-	for t, _ := range u.units {
+func (units *_units) Has(utype string) bool {
+	for t, _ := range units.units {
 		if t == utype {
 			return true
 		}
@@ -103,89 +124,68 @@ func (u *units) Has(utype string) bool {
 	return false
 }
 
-func (u *units) Multiply(that Units) (Units, float64) {
-	// Multiply Units
-	// Output Unit is based on that of the receiver.
-	// Use the Unit of the input, if the receiver does not have that utype.
+func (units *_units) Copy() Units {
+	copied := map[string]Unit{}
+	for utype, unit := range units.units {
+		copied[utype] = unit.Copy()
+	}
+	return &_units{units: copied}
+}
+
+func (units *_units) Equal(that Units) bool {
+	// True if both units have same DIMENSION (prefix is NOT considered)
+	if len(units.units) != len(that.GetAll()) {
+		return false
+	}
+	for utype, unit1 := range units.units {
+		if that.Has(utype) && unit1.Equal(that.Get(utype)) {
+			continue
+		}
+		return false
+	}
+	return true
+}
+
+func (units *_units) Multiply(those ...Units) (Units, float64) {
+	// Returns multiplied units, and a factor which should be multiplied to the value
+	// when using this units.
+	// If receiver and input units contain the same unit type, use that of the receiver.
 	// e.g. m/s * (kg*km) returns (m^2*kg/s, 1000.)
-	newunits := u.Copy()
+	newunits := units.Copy()
 	f := 1.
-	for utype, unit := range that.GetAll() {
-		if u.Has(utype) {
-			f *= math.Pow(unit.Prefix()/u.Get(utype).Prefix(), unit.Dimension())
-			newunits.Get(utype).addDimension(unit.Dimension())
-		} else {
-			newunits.Set(unit)
+	for _, that := range those {
+		for utype, unit := range that.GetAll() {
+			if newunits.Has(utype) {
+				_f, _ := unit.RatioTo(newunits.Get(utype)) // Error never happens if utype is the same.
+				f *= _f
+				newunits.Get(utype).AddDimension(unit.Dimension())
+			} else {
+				newunits.Set(unit)
+			}
 		}
 	}
 	return newunits, f
 }
 
-/* value with unit */
-type UnitValue interface {
-	Units() Units
-	Value() float64
-	Equal(UnitValue) bool
-	As(Units) (UnitValue, error)
-	Multiply(UnitValue) UnitValue
+/* IO */
+func Empty() Units {
+	return &_units{units: map[string]Unit{}}
 }
 
-type unitValue struct {
-	units Units
-	value float64
-}
-
-func NewUnitValue(value float64, u Units) UnitValue {
-	return &unitValue{units: u, value: value}
-}
-func NewUnitValueFromSlice(value float64, u ...Unit) UnitValue {
-	return &unitValue{units: UnitsFromSlice(u...), value: value}
-}
-
-func (uv *unitValue) Value() float64 {
-	return uv.value
-}
-
-func (uv *unitValue) Units() Units {
-	return uv.units
-}
-
-func (uv *unitValue) Equal(that UnitValue) bool {
-	if converted, err := that.As(uv.units); err != nil {
-		return false
-	} else {
-		return uv.value == converted.Value()
+func Multiply(units ...Units) (Units, float64) {
+	switch len(units) {
+	case 0:
+		return nil, 0.
+	case 1:
+		return units[0], 1.
+	default:
+		return units[0].Multiply(units[1:]...)
 	}
 }
 
-func (uv *unitValue) As(units Units) (UnitValue, error) {
-	if !uv.units.Equal(units) {
-		return nil, fmt.Errorf(`Cannot convert to unit with different dimensions.`)
-	}
-	f := 1.
-	for utype, before := range uv.units.GetAll() {
-		after := units.Get(utype)
-		f *= math.Pow(before.Prefix()/after.Prefix(), before.Dimension())
-	}
-	return NewUnitValue(f*uv.value, units.Copy()), nil
-}
-
-func (uv *unitValue) Multiply(that UnitValue) UnitValue {
-	newunit, f := uv.units.Multiply(that.Units())
-	return NewUnitValue(f*uv.value*that.Value(), newunit)
-}
-
-/* physical constants */
-func C() UnitValue {
-	value := 299792458.
-	return NewUnitValueFromSlice(value, NewUnit(Meter(), 1.), NewUnit(Second(), -1.))
-}
-func Kb() UnitValue {
-	value := 1.38064852e-23
-	return NewUnitValueFromSlice(value,
-		NewUnit(Meter(), 2.),
-		NewUnit(KiloGram(), 1.),
-		NewUnit(Second(), -2.),
-		NewUnit(Kelvin(), -1.),
-	)
+func NewSingleUnit(unit BaseUnit, dim float64) Units {
+	u := &_unit{BaseUnit: unit, dim: dim}
+	units := Empty()
+	units.Set(u)
+	return units
 }
