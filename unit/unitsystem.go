@@ -14,12 +14,12 @@ func SetSystem(u UnitSystem) {
 }
 
 func SetSystemOf(utype string, u BaseUnit) {
-	currentSystem.Units()[utype] = u
+	currentSystem.BaseUnits()[utype] = u
 }
 
 /* Unit system */
 type UnitSystem interface {
-	Units() map[string]BaseUnit
+	BaseUnits() map[string]BaseUnit
 	Copy() UnitSystem
 }
 
@@ -37,7 +37,7 @@ func SIUnit() UnitSystem {
 	return &unitSystem{units: units}
 }
 
-func (s *unitSystem) Units() map[string]BaseUnit {
+func (s *unitSystem) BaseUnits() map[string]BaseUnit {
 	return s.units
 }
 
