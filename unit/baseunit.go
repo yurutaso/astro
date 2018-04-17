@@ -5,6 +5,7 @@ const (
 	UNITTYPE_MASS        string = `mass`
 	UNITTYPE_TIME        string = `time`
 	UNITTYPE_TEMPERATURE string = `temperature`
+	UNITTYPE_ANGLE       string = `angle`
 
 	PREFIX_FEMT  float64 = 1.e-15
 	PREFIX_PICO  float64 = 1.e-12
@@ -62,17 +63,20 @@ func (u *baseUnit) SetPrefix(prefix float64) {
 func BaseUnitOf(utype string, name string, prefix float64) BaseUnit {
 	return &baseUnit{utype: utype, name: name, prefix: prefix}
 }
+func BaseUnitOfAngle(name string, prefix float64) BaseUnit {
+	return &baseUnit{utype: UNITTYPE_ANGLE, name: name, prefix: prefix}
+}
 func BaseUnitOfLength(name string, prefix float64) BaseUnit {
 	return &baseUnit{utype: UNITTYPE_LENGTH, name: name, prefix: prefix}
 }
 func BaseUnitOfMass(name string, prefix float64) BaseUnit {
 	return &baseUnit{utype: UNITTYPE_MASS, name: name, prefix: prefix}
 }
-func BaseUnitOfTime(name string, prefix float64) BaseUnit {
-	return &baseUnit{utype: UNITTYPE_TIME, name: name, prefix: prefix}
-}
 func BaseUnitOfTemperature(name string, prefix float64) BaseUnit {
 	return &baseUnit{utype: UNITTYPE_TEMPERATURE, name: name, prefix: prefix}
+}
+func BaseUnitOfTime(name string, prefix float64) BaseUnit {
+	return &baseUnit{utype: UNITTYPE_TIME, name: name, prefix: prefix}
 }
 
 /* Base Units */
@@ -90,4 +94,8 @@ func second() BaseUnit {
 
 func kelvin() BaseUnit {
 	return BaseUnitOfTemperature(`K`, 1.)
+}
+
+func radian() BaseUnit {
+	return BaseUnitOfAngle(`rad`, 1.)
 }

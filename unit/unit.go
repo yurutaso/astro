@@ -192,7 +192,7 @@ func newSingleUnit(unit BaseUnit, dim float64) Units {
 	return &_units{units: map[string]Unit{u.Type(): u.Copy()}}
 }
 
-// Basic Units
+// Units of length
 func AU(dim float64) Units {
 	return BaseUnitOfLength(`AU`, PREFIX_AU).AsUnits(dim)
 }
@@ -217,20 +217,31 @@ func Cm(dim float64) Units {
 func Meter(dim float64) Units {
 	return meter().AsUnits(dim)
 }
+
+// Units of time
 func Second(dim float64) Units {
 	return second().AsUnits(dim)
 }
+
+// Units of mass
 func KiloGram(dim float64) Units {
 	return kiloGram().AsUnits(dim)
 }
 func Kg(dim float64) Units {
 	return KiloGram(dim)
 }
+
+// Units of temperature
 func Kelvin(dim float64) Units {
 	return kelvin().AsUnits(dim)
 }
 
-// Operations between Units
+// Units of angle
+func Radian(dim float64) Units {
+	return radian().AsUnits(dim)
+}
+
+/* Operations between Units */
 func Multiply(units ...Units) (Units, float64) {
 	switch len(units) {
 	case 0:
