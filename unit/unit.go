@@ -189,9 +189,7 @@ func Empty() Units {
 // Generate Units from a BaseUnit
 func newSingleUnit(unit BaseUnit, dim float64) Units {
 	u := &_unit{BaseUnit: unit, dim: dim}
-	units := Empty()
-	units.Set(u)
-	return units
+	return &_units{units: map[string]Unit{u.Type(): u.Copy()}}
 }
 
 // Basic Units
