@@ -1,14 +1,14 @@
-package constants
+package consts
 
 import (
 	"github.com/yurutaso/astro/unit"
 )
 
 var (
-	m  unit.Units = unit.Meter().AsUnits(1.)    // meter
-	s  unit.Units = unit.Second().AsUnits(1.)   // second
-	k  unit.Units = unit.Kelvin().AsUnits(1.)   // kelvin
-	kg unit.Units = unit.KiloGram().AsUnits(1.) // kilogram
+	m  unit.Units = unit.Meter(1.)    // meter
+	s  unit.Units = unit.Second(1.)   // second
+	k  unit.Units = unit.Kelvin(1.)   // kelvin
+	kg unit.Units = unit.KiloGram(1.) // kilogram
 )
 
 /* physical constants */
