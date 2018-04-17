@@ -15,9 +15,9 @@ type UnitValue interface {
 	As(Units) (UnitValue, error)
 	MultiplyValue(float64) UnitValue
 	Multiply(...UnitValue) UnitValue
-	MultiplyOne(UnitValue) UnitValue
+	Divide(...UnitValue) UnitValue
 	Add(...UnitValue) (UnitValue, error)
-	AddOne(UnitValue) (UnitValue, error)
+	Inverse() UnitValue
 }
 
 type unitValue struct {
@@ -32,9 +32,15 @@ func (uv *unitValue) String() string {
 			s += _s + " "
 		}
 	}
-	return fmt.Sprintf("%e (%s)", uv.value, s[:len(s)-1])
+	if len(s) != 0 {
+		return fmt.Sprintf("%e (%s)", uv.value, s[:len(s)-1])
+	}
+	return fmt.Sprintf("%e", uv.value)
 }
 
+func (uv *unitValue) Inverse() UnitValue {
+	return NewUnitValue(1./uv.value, uv.Units().Inverse())
+}
 func (uv *unitValue) Value() float64 {
 	return uv.value
 }
@@ -70,11 +76,6 @@ func (uv *unitValue) MultiplyValue(value float64) UnitValue {
 	return NewUnitValue(value*uv.value, uv.units.Copy())
 }
 
-func (uv *unitValue) MultiplyOne(that UnitValue) UnitValue {
-	newunit, f := uv.units.Multiply(that.Units())
-	return NewUnitValue(f*uv.value*that.Value(), newunit)
-}
-
 func (uv *unitValue) Multiply(those ...UnitValue) UnitValue {
 	newunit := uv.units.Copy()
 	f := 1.
@@ -88,12 +89,17 @@ func (uv *unitValue) Multiply(those ...UnitValue) UnitValue {
 	return NewUnitValue(f*v, newunit)
 }
 
-func (uv *unitValue) AddOne(that UnitValue) (UnitValue, error) {
-	if converted, err := that.As(uv.units); err != nil {
-		return nil, fmt.Errorf("Cannot add UnitValue with different units.")
-	} else {
-		return NewUnitValue(uv.value+converted.Value(), uv.units.Copy()), nil
+func (uv *unitValue) Divide(those ...UnitValue) UnitValue {
+	newunit := uv.units.Copy()
+	f := 1.
+	_f := 1.
+	v := uv.value
+	for _, that := range those {
+		newunit, _f = newunit.Multiply(that.Units().Inverse())
+		f *= _f
+		v /= that.Value()
 	}
+	return NewUnitValue(f*v, newunit)
 }
 
 func (uv *unitValue) Add(those ...UnitValue) (UnitValue, error) {

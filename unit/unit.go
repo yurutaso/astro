@@ -17,6 +17,8 @@ type Unit interface {
 	AddDimension(float64)
 	Inverse() Unit
 	Equal(Unit) bool
+	EqualType(Unit) bool
+	EqualDimension(Unit) bool
 	RatioTo(Unit) (float64, error)
 }
 
@@ -50,11 +52,17 @@ func (u *_unit) Inverse() Unit {
 func (u *_unit) Equal(that Unit) bool {
 	return u.Type() == that.Type() && u.dim == that.Dimension()
 }
+func (u *_unit) EqualType(that Unit) bool {
+	return u.Type() == that.Type()
+}
+func (u *_unit) EqualDimension(that Unit) bool {
+	return u.dim == that.Dimension()
+}
 func (u *_unit) RatioTo(that Unit) (float64, error) {
-	if that.Equal(u) {
+	if that.EqualType(u) {
 		return math.Pow(u.Prefix()/that.Prefix(), u.dim), nil
 	}
-	return 1., fmt.Errorf(`Cannot compute ratio of units with different dimensions`)
+	return 1., fmt.Errorf(`Cannot compute ratio of units with different type`)
 }
 
 func (u *_unit) GetBaseUnit() BaseUnit {
@@ -71,6 +79,7 @@ type Units interface {
 	Get(string) Unit
 	GetAll() map[string]Unit
 	Set(Unit)
+	SetValue(float64) UnitValue
 	Copy() Units
 	Equal(Units) bool
 	Has(string) bool
@@ -100,6 +109,10 @@ func (units *_units) Inverse() Units {
 
 func (units *_units) Set(unit Unit) {
 	units.units[unit.Type()] = unit.Copy()
+}
+
+func (units *_units) SetValue(value float64) UnitValue {
+	return NewUnitValue(value, units.Copy())
 }
 
 func (units *_units) GetAll() map[string]Unit {
@@ -156,7 +169,7 @@ func (units *_units) Multiply(those ...Units) (Units, float64) {
 	for _, that := range those {
 		for utype, unit := range that.GetAll() {
 			if newunits.Has(utype) {
-				_f, _ := unit.RatioTo(newunits.Get(utype)) // Error never happens if utype is the same.
+				_f, _ := unit.RatioTo(newunits.Get(utype)) // Error never happens if unit type of the unit and newunit are the same.
 				f *= _f
 				newunits.Get(utype).AddDimension(unit.Dimension())
 			} else {
@@ -168,10 +181,58 @@ func (units *_units) Multiply(those ...Units) (Units, float64) {
 }
 
 /* IO */
+// Empty unit
 func Empty() Units {
 	return &_units{units: map[string]Unit{}}
 }
 
+// Generate Units from a BaseUnit
+func newSingleUnit(unit BaseUnit, dim float64) Units {
+	u := &_unit{BaseUnit: unit, dim: dim}
+	units := Empty()
+	units.Set(u)
+	return units
+}
+
+// Basic Units
+func AU(dim float64) Units {
+	return BaseUnitOfLength(`AU`, PREFIX_AU).AsUnits(dim)
+}
+func LightYear(dim float64) Units {
+	return BaseUnitOfLength(`ly`, PREFIX_LY).AsUnits(dim)
+}
+func LY(dim float64) Units {
+	return LightYear(dim)
+}
+func Parsec(dim float64) Units {
+	return BaseUnitOfLength(`pc`, PREFIX_PARSEC).AsUnits(dim)
+}
+func Pc(dim float64) Units {
+	return Parsec(dim)
+}
+func CentiMeter(dim float64) Units {
+	return BaseUnitOfMass(`cm`, PREFIX_CENTI).AsUnits(dim)
+}
+func Cm(dim float64) Units {
+	return CentiMeter(dim)
+}
+func Meter(dim float64) Units {
+	return meter().AsUnits(dim)
+}
+func Second(dim float64) Units {
+	return second().AsUnits(dim)
+}
+func KiloGram(dim float64) Units {
+	return kiloGram().AsUnits(dim)
+}
+func Kg(dim float64) Units {
+	return KiloGram(dim)
+}
+func Kelvin(dim float64) Units {
+	return kelvin().AsUnits(dim)
+}
+
+// Operations between Units
 func Multiply(units ...Units) (Units, float64) {
 	switch len(units) {
 	case 0:
@@ -181,11 +242,4 @@ func Multiply(units ...Units) (Units, float64) {
 	default:
 		return units[0].Multiply(units[1:]...)
 	}
-}
-
-func NewSingleUnit(unit BaseUnit, dim float64) Units {
-	u := &_unit{BaseUnit: unit, dim: dim}
-	units := Empty()
-	units.Set(u)
-	return units
 }

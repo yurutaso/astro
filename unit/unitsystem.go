@@ -29,10 +29,10 @@ type unitSystem struct {
 
 func SIUnit() UnitSystem {
 	units := map[string]BaseUnit{
-		UNITTYPE_LENGTH:      Meter(),
-		UNITTYPE_MASS:        KiloGram(),
-		UNITTYPE_TIME:        Second(),
-		UNITTYPE_TEMPERATURE: Kelvin(),
+		UNITTYPE_LENGTH:      meter(),
+		UNITTYPE_MASS:        kiloGram(),
+		UNITTYPE_TIME:        second(),
+		UNITTYPE_TEMPERATURE: kelvin(),
 	}
 	return &unitSystem{units: units}
 }
