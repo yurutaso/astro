@@ -111,6 +111,22 @@ func NewDot(center coordinate.Coordinate) *Dot {
 }
 
 func (ann Dot) String() string {
-	center := ann.Center.ConvertTo(`J2000`).(*coordinate.J2000)
+	center := ann.Center.ConvertTo(`J2000`)
 	return fmt.Sprintf("%sDot W %f %f\n", ann.Option, center.GetX().Degree(), center.GetY().Degree())
+}
+
+/* Annotation Text */
+type Text struct {
+	Left   coordinate.Coordinate
+	Text   string
+	Option *AnnotationOpt
+}
+
+func NewText(left coordinate.Coordinate, text string) *Text {
+	return &Text{Left: left, Text: text, Option: NewAnnotationOpt()}
+}
+
+func (ann Text) String() string {
+	left := ann.Left.ConvertTo(`J2000`)
+	return fmt.Sprintf("%sText W %f %f %s\n", ann.Option, left.GetX().Degree(), left.GetY().Degree(), ann.Text)
 }
